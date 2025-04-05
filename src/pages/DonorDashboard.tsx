@@ -1,53 +1,66 @@
 
-import React from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { bloodRequestService } from "@/services/api";
+import { useToast } from "@/components/ui/use-toast";
+
+interface BloodRequest {
+  _id: string;
+  patientName: string;
+  hospitalName: string;
+  bloodType: string;
+  urgency: string;
+  createdAt: string;
+  contactName: string;
+  unitsNeeded: number;
+}
 
 const DonorDashboard = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [bloodRequests, setBloodRequests] = useState<BloodRequest[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // Mock blood request data
-  const bloodRequests = [
-    {
-      id: 1,
-      hospital: "City General Hospital",
-      bloodType: "O+",
-      urgency: "Emergency",
-      distance: "3.2 km",
-      date: "2025-04-06"
-    },
-    {
-      id: 2,
-      hospital: "St. Mary's Medical Center",
-      bloodType: "A-",
-      urgency: "High",
-      distance: "5.1 km",
-      date: "2025-04-08"
-    },
-    {
-      id: 3,
-      hospital: "Community Blood Bank",
-      bloodType: "All Types",
-      urgency: "Normal",
-      distance: "2.7 km",
-      date: "2025-04-10"
-    }
-  ];
+  useEffect(() => {
+    const fetchBloodRequests = async () => {
+      try {
+        setLoading(true);
+        const response = await bloodRequestService.getAllRequests();
+        setBloodRequests(response.data);
+      } catch (error) {
+        console.error("Error fetching blood requests:", error);
+        toast({
+          title: "Failed to load blood requests",
+          description: "Please try refreshing the page.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBloodRequests();
+  }, [toast]);
 
   const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case "Emergency":
+    switch (urgency.toLowerCase()) {
+      case "urgent":
         return "bg-red-500 hover:bg-red-600";
-      case "High":
+      case "high":
         return "bg-amber-500 hover:bg-amber-600";
       default:
         return "bg-primary hover:bg-primary/90";
     }
   };
 
-  const handleDonateClick = (requestId: number) => {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const handleDonateClick = (requestId: string) => {
     // Navigate to donation form for specific request
     navigate(`/donate?requestId=${requestId}`);
   };
@@ -89,36 +102,50 @@ const DonorDashboard = () => {
       </div>
 
       <h2 className="text-2xl font-bold mb-4">Blood Requests Near You</h2>
-      <div className="space-y-4">
-        {bloodRequests.map((request) => (
-          <Card key={request.id} className={request.urgency === "Emergency" ? "border-red-500 border-2" : ""}>
-            <CardContent className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="font-bold text-lg">{request.hospital}</h3>
-                  {request.urgency === "Emergency" && (
-                    <Badge variant="destructive">EMERGENCY</Badge>
-                  )}
+      
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blood"></div>
+        </div>
+      ) : bloodRequests.length === 0 ? (
+        <Card className="text-center p-6">
+          <p className="text-lg text-muted-foreground">No blood requests available at the moment.</p>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {bloodRequests.map((request) => (
+            <Card key={request._id} className={request.urgency.toLowerCase() === "urgent" ? "border-red-500 border-2" : ""}>
+              <CardContent className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="font-bold text-lg">{request.hospitalName}</h3>
+                    {request.urgency.toLowerCase() === "urgent" && (
+                      <Badge variant="destructive">EMERGENCY</Badge>
+                    )}
+                  </div>
+                  <p className="text-muted-foreground mb-2">
+                    Patient: {request.patientName} • Posted on {formatDate(request.createdAt)}
+                  </p>
+                  <div className="flex items-center gap-4 mt-2">
+                    <Badge variant="outline" className="text-lg px-3">
+                      {request.bloodType}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
+                      Units needed: {request.unitsNeeded}
+                    </span>
+                  </div>
                 </div>
-                <p className="text-muted-foreground mb-2">
-                  {request.distance} away • Needed by {request.date}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-lg px-3">
-                    {request.bloodType}
-                  </Badge>
-                </div>
-              </div>
-              <Button 
-                className={getUrgencyColor(request.urgency)}
-                onClick={() => handleDonateClick(request.id)}
-              >
-                Donate Now
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                <Button 
+                  className={getUrgencyColor(request.urgency)}
+                  onClick={() => handleDonateClick(request._id)}
+                >
+                  Donate Now
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

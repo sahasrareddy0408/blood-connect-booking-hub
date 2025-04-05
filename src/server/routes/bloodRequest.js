@@ -57,6 +57,27 @@ router.get('/', async (req, res) => {
   }
 });
 
+// @route   GET api/blood-requests/:id
+// @desc    Get blood request by ID
+// @access  Public
+router.get('/:id', async (req, res) => {
+  try {
+    const bloodRequest = await BloodRequest.findById(req.params.id);
+    
+    if (!bloodRequest) {
+      return res.status(404).json({ msg: 'Blood request not found' });
+    }
+    
+    res.json(bloodRequest);
+  } catch (error) {
+    console.error(error.message);
+    if (error.kind === 'ObjectId') {
+      return res.status(404).json({ msg: 'Blood request not found' });
+    }
+    res.status(500).send('Server error');
+  }
+});
+
 // @route   GET api/blood-requests/bloodbank/:bloodBankId
 // @desc    Get all requests created by a specific blood bank
 // @access  Private

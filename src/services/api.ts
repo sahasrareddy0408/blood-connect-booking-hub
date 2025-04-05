@@ -29,6 +29,9 @@ export const bloodRequestService = {
   getAllRequests: async () => {
     return await api.get('/blood-requests');
   },
+  getRequestById: async (requestId: string) => {
+    return await api.get(`/blood-requests/${requestId}`);
+  },
   getBloodBankRequests: async (bloodBankId: string) => {
     return await api.get(`/blood-requests/bloodbank/${bloodBankId}`);
   },
